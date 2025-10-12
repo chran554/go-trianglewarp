@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+
+	"github.com/chran554/go-bresenham"
+	warp "github.com/chran554/go-trianglewarp"
+
 	"image"
 	"image/color"
 	"image/draw"
@@ -9,11 +14,8 @@ import (
 	_ "image/png"
 	"log"
 	"math/rand/v2"
-	morph "morphimage"
 	"os"
 	"path/filepath"
-
-	"github.com/chran554/go-bresenham"
 )
 
 func main() {
@@ -24,13 +26,83 @@ func main() {
 	imageFilename := os.Args[1]
 
 	srcImage, _ := loadImage(imageFilename)
+	srcImage2, _ := loadImage("images/src-image-2.png")
 
-	morphTriangle(srcImage)
+	warpTriangle(srcImage)
 
-	morphMeshedImage(srcImage, true)
+	// warpMeshedImage(srcImage, true)
+	warpMeshedImage2(srcImage, srcImage2, true)
 }
 
-func morphMeshedImage(srcImage image.Image, showMesh bool) {
+func warpMeshedImage2(srcImage draw.Image, srcImage2 draw.Image, showMesh bool) {
+	//lineColor := color.Color(color.RGBA{R: 255, A: 64})
+	//pointColor := color.Color(color.White)
+
+	srcWidth := srcImage.Bounds().Dx()
+	srcHeight := srcImage.Bounds().Dy()
+
+	dstImage := image.NewRGBA(image.Rect(0, 0, srcWidth, srcHeight))
+
+	xDivisions := 12
+	yDivisions := 8
+
+	srcMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
+	dstMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
+
+	// Make destination mesh somewhat irregular/distorted
+	deviation := min(srcWidth/srcMesh.XSubdivisionCount(), srcHeight/srcMesh.YSubdivisionCount()) / 2
+	for x := 0; x < dstMesh.XSubdivisionCount(); x++ {
+		for y := 0; y < dstMesh.YSubdivisionCount(); y++ {
+			t1, t2 := dstMesh.SubdivisionTriangles(x, y)
+
+			t1.P1.X = rnd(t1.P1.X, deviation)
+			t1.P1.Y = rnd(t1.P1.Y, deviation)
+			t1.P2.X = rnd(t1.P2.X, deviation)
+			t1.P2.Y = rnd(t1.P2.Y, deviation)
+			t1.P3.X = rnd(t1.P3.X, deviation)
+			t1.P3.Y = rnd(t1.P3.Y, deviation)
+
+			t2.P1.X = rnd(t2.P1.X, deviation)
+			t2.P1.Y = rnd(t2.P1.Y, deviation)
+			t2.P2.X = rnd(t2.P2.X, deviation)
+			t2.P2.Y = rnd(t2.P2.Y, deviation)
+			t2.P3.X = rnd(t2.P3.X, deviation)
+			t2.P3.Y = rnd(t2.P3.Y, deviation)
+		}
+	}
+
+	//warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
+	//warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, warp.InterpolationBiLinear)
+
+	frameCount := 20
+	for i := 0; i <= frameCount; i++ {
+		progress := float64(i) / float64(frameCount)
+		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, warp.InterpolationBiLinear)
+
+		//srcMesh.PaintMesh(srcImage, &lineColor, &pointColor)
+		//dstMesh.PaintMesh(dstImage, &lineColor, &pointColor)
+
+		_ = saveImage(dstImage, fmt.Sprintf("output/mesh-warp-dst-%03d.png", i))
+	}
+}
+
+func MorphImages(srcImage1 draw.Image, srcMesh1 *warp.Mesh, srcImage2 draw.Image, srcMesh2 *warp.Mesh, dstImage *image.RGBA, progress float64, interpolationMethod warp.Interpolation) {
+	for x := 0; x < srcMesh2.XSubdivisionCount(); x++ {
+		for y := 0; y < srcMesh2.YSubdivisionCount(); y++ {
+			srcTriangle1_1, srcTriangle1_2 := srcMesh1.SubdivisionTriangles(x, y)
+			srcTriangle2_1, srcTriangle2_2 := srcMesh2.SubdivisionTriangles(x, y)
+
+			warp.Morph(srcImage1, srcTriangle1_1, srcImage2, srcTriangle2_1, dstImage, progress, interpolationMethod)
+			warp.Morph(srcImage1, srcTriangle1_2, srcImage2, srcTriangle2_2, dstImage, progress, interpolationMethod)
+		}
+	}
+}
+
+func rnd(value, maxDeviation int) int {
+	return value + rand.N(maxDeviation/2) - (maxDeviation / 4)
+}
+
+func warpMeshedImage(srcImage image.Image, showMesh bool) {
 	srcWidth := srcImage.Bounds().Dx()
 	srcHeight := srcImage.Bounds().Dy()
 
@@ -41,8 +113,8 @@ func morphMeshedImage(srcImage image.Image, showMesh bool) {
 	divisionWidth := srcWidth / divisions
 	divisionHeight := srcHeight / divisions
 
-	meshPoints := make([]image.Point, (divisions+1)*(divisions+1))
-	morphPoints := make([]image.Point, (divisions+1)*(divisions+1))
+	meshPoints := make([]*image.Point, (divisions+1)*(divisions+1))
+	warpPoints := make([]*image.Point, (divisions+1)*(divisions+1))
 
 	// Setup points for both source and destination meshes
 	for x := 0; x <= divisions; x++ {
@@ -50,12 +122,12 @@ func morphMeshedImage(srcImage image.Image, showMesh bool) {
 			dx := rand.N(divisionWidth/2) - (divisionWidth / 4)
 			dy := rand.N(divisionHeight/2) - (divisionHeight / 4)
 
-			meshPoints[y*divisionsPlus+x] = image.Point{X: x * divisionWidth, Y: y * divisionHeight}
-			morphPoints[y*divisionsPlus+x] = image.Point{X: x*divisionWidth + dx, Y: y*divisionHeight + dy}
+			meshPoints[y*divisionsPlus+x] = &image.Point{X: x * divisionWidth, Y: y * divisionHeight}
+			warpPoints[y*divisionsPlus+x] = &image.Point{X: x*divisionWidth + dx, Y: y*divisionHeight + dy}
 		}
 	}
 
-	// Morph the source image to the destination by using the predefined mesh points
+	// Warp the source image to the destination by using the predefined mesh points
 	for x := 0; x < divisions; x++ {
 		for y := 0; y < divisions; y++ {
 			sp1 := meshPoints[y*divisionsPlus+x]
@@ -63,19 +135,19 @@ func morphMeshedImage(srcImage image.Image, showMesh bool) {
 			sp3 := meshPoints[(y+1)*divisionsPlus+x]
 			sp4 := meshPoints[(y+1)*divisionsPlus+x+1]
 
-			dp1 := morphPoints[y*divisionsPlus+x]
-			dp2 := morphPoints[y*divisionsPlus+x+1]
-			dp3 := morphPoints[(y+1)*divisionsPlus+x]
-			dp4 := morphPoints[(y+1)*divisionsPlus+x+1]
+			dp1 := warpPoints[y*divisionsPlus+x]
+			dp2 := warpPoints[y*divisionsPlus+x+1]
+			dp3 := warpPoints[(y+1)*divisionsPlus+x]
+			dp4 := warpPoints[(y+1)*divisionsPlus+x+1]
 
-			srcTriangle1 := morph.Triangle{sp1, sp2, sp3}
-			srcTriangle2 := morph.Triangle{sp2, sp3, sp4}
+			srcTriangle1 := warp.Triangle{sp1, sp2, sp3}
+			srcTriangle2 := warp.Triangle{sp2, sp3, sp4}
 
-			dstTriangle1 := morph.Triangle{dp1, dp2, dp3}
-			dstTriangle2 := morph.Triangle{dp2, dp3, dp4}
+			dstTriangle1 := warp.Triangle{dp1, dp2, dp3}
+			dstTriangle2 := warp.Triangle{dp2, dp3, dp4}
 
-			morph.Morph(srcImage, srcTriangle1, dstImage, dstTriangle1, morph.InterpolationBiLinear)
-			morph.Morph(srcImage, srcTriangle2, dstImage, dstTriangle2, morph.InterpolationBiLinear)
+			warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
+			warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, warp.InterpolationBiLinear)
 
 			if showMesh {
 				drawTriangle(dstImage, dstTriangle1, color.NRGBA{128, 128, 128, 255})
@@ -89,26 +161,26 @@ func morphMeshedImage(srcImage image.Image, showMesh bool) {
 		}
 	}
 
-	_ = saveImage(dstImage, "output/mesh-morph.png")
+	_ = saveImage(dstImage, "output/mesh-warp.png")
 }
 
-func morphTriangle(srcImage image.Image) {
+func warpTriangle(srcImage image.Image) {
 	srcWidth := srcImage.Bounds().Dx()
 	srcHeight := srcImage.Bounds().Dy()
 
 	dstImage := image.NewRGBA(image.Rect(0, 0, srcWidth, srcHeight))
 
-	srcTriangle := morph.Triangle{image.Point{X: 200, Y: 250}, image.Point{X: 400, Y: 250}, image.Point{X: 300, Y: 400}}
-	dstTriangle := morph.Triangle{image.Point{X: 350, Y: 450}, image.Point{X: 500, Y: 350}, image.Point{X: 460, Y: 500}}
-	dstTriangle2 := morph.Triangle{image.Point{X: 50, Y: 450}, image.Point{X: 160, Y: 500}, image.Point{X: 200, Y: 350}}
+	srcTriangle := warp.Triangle{&image.Point{X: 200, Y: 250}, &image.Point{X: 400, Y: 250}, &image.Point{X: 300, Y: 400}}
+	dstTriangle := warp.Triangle{&image.Point{X: 350, Y: 450}, &image.Point{X: 500, Y: 350}, &image.Point{X: 460, Y: 500}}
+	dstTriangle2 := warp.Triangle{&image.Point{X: 50, Y: 450}, &image.Point{X: 160, Y: 500}, &image.Point{X: 200, Y: 350}}
 
 	copyArea(srcImage, 0, 0, srcWidth-1, srcHeight-1, dstImage)
-	morph.Morph(srcImage, srcTriangle, dstImage, dstTriangle, morph.InterpolationBiLinear)
-	morph.Morph(srcImage, srcTriangle, dstImage, dstTriangle2, morph.InterpolationBiLinear)
+	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, warp.InterpolationBiLinear)
+	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle2, warp.InterpolationBiLinear)
 	drawTriangle(dstImage, srcTriangle, color.White)
 	drawTriangle(dstImage, dstTriangle, color.White)
 	drawTriangle(dstImage, dstTriangle2, color.White)
-	_ = saveImage(dstImage, "output/triangle-morph.png")
+	_ = saveImage(dstImage, "output/triangle-warp.png")
 }
 
 // copyArea just copies the src image to the destination image pixel by pixel.
@@ -120,13 +192,13 @@ func copyArea(src image.Image, sx0 int, sy0 int, sx1 int, sy1 int, dst draw.Imag
 	}
 }
 
-func drawTriangle(img *image.RGBA, t morph.Triangle, c color.Color) {
+func drawTriangle(img *image.RGBA, t warp.Triangle, c color.Color) {
 	bresenham.Bresenham(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, func(x, y int) { img.Set(x, y, c) })
 	bresenham.Bresenham(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, func(x, y int) { img.Set(x, y, c) })
 	bresenham.Bresenham(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, func(x, y int) { img.Set(x, y, c) })
 }
 
-func drawDot(img *image.RGBA, p image.Point, c color.Color) {
+func drawDot(img *image.RGBA, p *image.Point, c color.Color) {
 	img.Set(p.X, p.Y, c)
 	img.Set(p.X+1, p.Y, c)
 	img.Set(p.X-1, p.Y, c)
@@ -146,14 +218,20 @@ func saveImage(img image.Image, filename string) error {
 	return nil
 }
 
-func loadImage(filename string) (image.Image, error) {
+func loadImage(filename string) (draw.Image, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	img, _, err := image.Decode(f)
-	return img, err
+	if rgba, ok := img.(*image.RGBA); ok {
+		return rgba, err
+	}
+	if nrgba, ok := img.(*image.NRGBA); ok {
+		return nrgba, err
+	}
+	return nil, err
 }
 
 func createFileWithDirPath(p string) (*os.File, error) {

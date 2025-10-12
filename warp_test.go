@@ -1,4 +1,4 @@
-package morph
+package warp
 
 import (
 	"fmt"
@@ -12,79 +12,79 @@ type triangleTestScenario struct {
 	dstTriangle Triangle
 }
 
-func BenchmarkMorph2(b *testing.B) {
+func BenchmarkWarp2(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				morph2(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
+				warp2(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
 			}
 		})
 	}
 }
 
-func BenchmarkMorph3(b *testing.B) {
+func BenchmarkWarp3(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				morph3(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
+				warp3(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
 			}
 		})
 	}
 }
 
-func BenchmarkMorph4(b *testing.B) {
+func BenchmarkWarp4(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				morph4(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
+				warp4(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
 			}
 		})
 	}
 }
 
-func BenchmarkMorph5(b *testing.B) {
+func BenchmarkWarp5(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				morph5(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
+				warp5(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
 			}
 		})
 	}
 }
 
-func BenchmarkMorph6(b *testing.B) {
+func BenchmarkWarp6(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				morph6(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
+				warp6(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle)
 			}
 		})
 	}
 }
 
-func BenchmarkMorph7(b *testing.B) {
+func BenchmarkWarp7(b *testing.B) {
 	srcImage, dstImage := testImages()
 	testScenarios := triangleTestScenarios()
 
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				Morph(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle, InterpolationNearestNeighbour)
+				Warp(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle, InterpolationNearestNeighbour)
 			}
 		})
 	}
@@ -101,11 +101,11 @@ func testImages() (srcImage *image.RGBA, dstImage *image.RGBA) {
 }
 
 func triangleTestScenarios() []triangleTestScenario {
-	srcTriangle1 := Triangle{image.Point{X: 200, Y: 200}, image.Point{X: 300, Y: 200}, image.Point{X: 200, Y: 300}}
-	dstTriangle1 := Triangle{image.Point{X: 50, Y: 50}, image.Point{X: 450, Y: 75}, image.Point{X: 75, Y: 425}}
+	srcTriangle1 := Triangle{&image.Point{X: 200, Y: 200}, &image.Point{X: 300, Y: 200}, &image.Point{X: 200, Y: 300}}
+	dstTriangle1 := Triangle{&image.Point{X: 50, Y: 50}, &image.Point{X: 450, Y: 75}, &image.Point{X: 75, Y: 425}}
 
-	srcTriangle2 := Triangle{image.Point{X: 100, Y: 100}, image.Point{X: 400, Y: 100}, image.Point{X: 100, Y: 400}}
-	dstTriangle2 := Triangle{image.Point{X: 200, Y: 200}, image.Point{X: 450, Y: 150}, image.Point{X: 110, Y: 375}}
+	srcTriangle2 := Triangle{&image.Point{X: 100, Y: 100}, &image.Point{X: 400, Y: 100}, &image.Point{X: 100, Y: 400}}
+	dstTriangle2 := Triangle{&image.Point{X: 200, Y: 200}, &image.Point{X: 450, Y: 150}, &image.Point{X: 110, Y: 375}}
 
 	var testScenarios = []triangleTestScenario{
 		{name: "triangle 1", srcTriangle: srcTriangle1, dstTriangle: dstTriangle1},

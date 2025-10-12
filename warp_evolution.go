@@ -1,4 +1,4 @@
-package morph
+package warp
 
 import (
 	"image"
@@ -7,11 +7,11 @@ import (
 	"math"
 )
 
-// morph2 iterates through every pixel in the destination triangle's bounding box
+// warp2 iterates through every pixel in the destination triangle's bounding box
 // to see if the pixel is included in the triangle.
 //
 // The barycentric weight of each triangle point is calculated from scratch for each pixel with no optimization.
-func morph2(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
+func warp2(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -28,8 +28,7 @@ func morph2(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 	// Loop through all the pixels of the bounding box
 	for py := boundingBox.Min.Y; py <= boundingBox.Max.Y; py++ {
 		for px := boundingBox.Min.X; px <= boundingBox.Max.X; px++ {
-
-			P := image.Point{X: px, Y: py}
+			P := &image.Point{X: px, Y: py}
 
 			// Calculate our edge functions
 			ABP := Triangle{P1: dstTriangle.P1, P2: dstTriangle.P2, P3: P}.doubleSignedArea()
@@ -62,7 +61,7 @@ func morph2(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 	}
 }
 
-// morph3 iterates through every pixel in the destination triangle's bounding box
+// warp3 iterates through every pixel in the destination triangle's bounding box
 // to see if the pixel is included in the triangle.
 //
 // The barycentric weight of each triangle point is calculated from
@@ -70,7 +69,7 @@ func morph2(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 // for each pixel in the destination triangle bounding box.
 //
 // The pre-calculations require a destination triangle with a bounding box with dimensions of at least 2x2 pixels.
-func morph3(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
+func warp3(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -121,7 +120,7 @@ func morph3(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 	}
 }
 
-func morph4(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
+func warp4(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -144,7 +143,7 @@ func morph4(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 		index := py - boundingBox.Min.Y
 
 		for px := minX[index]; px <= maxX[index]; px++ {
-			P := image.Point{X: px, Y: py}
+			P := &image.Point{X: px, Y: py}
 
 			// Calculate our edge functions
 			ABP := Triangle{P1: dstTriangle.P1, P2: dstTriangle.P2, P3: P}.doubleSignedArea()
@@ -168,7 +167,7 @@ func morph4(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 	}
 }
 
-func morph5(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
+func warp5(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -214,7 +213,7 @@ func morph5(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dst
 	}
 }
 
-func morph6(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
+func warp6(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 

@@ -1,50 +1,24 @@
-package morph
+package warp
 
-import "C"
 import (
-	"github.com/chran554/go-bresenham"
 	"image"
 	"image/color"
 	"image/draw"
+	"math"
+
+	"github.com/chran554/go-bresenham"
 )
 
 type Interpolation int
 
 const (
-	InterpolationNearestNeighbour = iota
+	InterpolationNearestNeighbour Interpolation = iota
 	InterpolationBiLinear
 )
 
-type Triangle struct {
-	P1, P2, P3 image.Point
-}
-
-// doubleSignedArea is the doubled (signed) area size for the triangle.
-// The sign of the area value tells if the points of the triangle are in given clockwise or counter-clockwise order.
-//
-// The value is the same as the determinant for the edge vectors u and v
-// where u=P2-P1 and v=P3-P1.
-// This is also often defined as the cross-product of two vectors in 2D. det(u v)=u x v
-// https://mathworld.wolfram.com/CrossProduct.html
-func (t Triangle) doubleSignedArea() int {
-	return (t.P2.X-t.P1.X)*(t.P3.Y-t.P1.Y) - (t.P2.Y-t.P1.Y)*(t.P3.X-t.P1.X)
-}
-
-func (t Triangle) orientationClockwise() int {
-	return (t.P2.X-t.P1.X)*(t.P3.Y-t.P1.Y) - (t.P2.Y-t.P1.Y)*(t.P3.X-t.P1.X)
-}
-
-func (t Triangle) boundingBox() image.Rectangle {
-	r := image.Rectangle{}
-	r.Min.X = min(min(t.P1.X, t.P2.X), t.P3.X)
-	r.Min.Y = min(min(t.P1.Y, t.P2.Y), t.P3.Y)
-	r.Max.X = max(max(t.P1.X, t.P2.X), t.P3.X)
-	r.Max.Y = max(max(t.P1.Y, t.P2.Y), t.P3.Y)
-
-	return r
-}
-
-func Morph(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle, interpolation Interpolation) {
+// Warp warps a triangular excerpt from a source image onto a triangular area on a destination image.
+// The pixels written onto the destination area are interpolated using specified interpolation method.
+func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle, interpolation Interpolation) {
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -119,6 +93,161 @@ func Morph(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstT
 	}
 }
 
+// Morph interpolates a triangular area from a first image (srcImage1) to a triangular area on a second image (srcImage2).
+// The result is written to the dstImage image.
+// The image content of the triangular area is interpolated from srcImage1 to srcImage2 with the progress parameter [0.0, 1.0].
+// The triangular area, or rather the location of the three points of the triangle, are also interpolated from srcTriangle1 to srcTriangle3 with the progress parameter [0.0, 1.0]
+func Morph(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, progress float64, interpolation Interpolation) {
+	dstTriangle := Triangle{
+		P1: interpolatePoint(srcTriangle1.P1, srcTriangle2.P1, progress),
+		P2: interpolatePoint(srcTriangle1.P2, srcTriangle2.P2, progress),
+		P3: interpolatePoint(srcTriangle1.P3, srcTriangle2.P3, progress),
+	}
+
+	MorphWithFixedDestination(srcImage1, srcTriangle1, srcImage2, srcTriangle2, dstImage, dstTriangle, progress, interpolation)
+}
+
+// MorphWithFixedDestination interpolates a triangular area from a first image (srcImage1) to a triangular area on a second image (srcImage2).
+// The result is written to the dstTriangle on the dstImage image.
+// The image content of the triangular area is interpolated from srcImage1 to srcImage2 with the progress parameter [0.0, 1.0].
+func MorphWithFixedDestination(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, dstTriangle Triangle, progress float64, interpolation Interpolation) {
+	// Calculate the edge function for the whole triangle (ABC)
+	ABC := dstTriangle.doubleSignedArea()
+
+	// Do not use the barycentric method if the triangle is back facing / triangle is left winding.
+	//if ABC <= 0 {
+	//	return
+	//}
+
+	// If the triangle has no area (not visible)
+	if ABC == 0 {
+		return
+	}
+
+	minX, maxX, boundingBox := triangleMinMaxX(dstTriangle)
+
+	// Precalculated barycentric values for the triangle
+	wa0, wb0, wc0, wadx, wady, wbdx, wbdy, wcdx, wcdy := preCalculatedBarycentricWeightDeltas(dstTriangle)
+
+	// Triangle #1 calculations
+	t1p1XwaXdY := float64(srcTriangle1.P1.X) * wadx
+	t1p1YwaXdY := float64(srcTriangle1.P1.Y) * wadx
+
+	t1p2XwbXdY := float64(srcTriangle1.P2.X) * wbdx
+	t1p2YwbXdY := float64(srcTriangle1.P2.Y) * wbdx
+
+	t1p3XwcXdY := float64(srcTriangle1.P3.X) * wcdx
+	t1p3YwcXdY := float64(srcTriangle1.P3.Y) * wcdx
+
+	t1xWeightDelta := t1p1XwaXdY + t1p2XwbXdY + t1p3XwcXdY
+	t1yWeightDelta := t1p1YwaXdY + t1p2YwbXdY + t1p3YwcXdY
+
+	// Triangle #2 calculations
+	t2p1XwaXdY := float64(srcTriangle2.P1.X) * wadx
+	t2p1YwaXdY := float64(srcTriangle2.P1.Y) * wadx
+
+	t2p2XwbXdY := float64(srcTriangle2.P2.X) * wbdx
+	t2p2YwbXdY := float64(srcTriangle2.P2.Y) * wbdx
+
+	t2p3XwcXdY := float64(srcTriangle2.P3.X) * wcdx
+	t2p3YwcXdY := float64(srcTriangle2.P3.Y) * wcdx
+
+	t2xWeightDelta := t2p1XwaXdY + t2p2XwbXdY + t2p3XwcXdY
+	t2yWeightDelta := t2p1YwaXdY + t2p2YwbXdY + t2p3YwcXdY
+
+	// Loop through all the pixels of the bounding box
+	for py := boundingBox.Min.Y; py <= boundingBox.Max.Y; py++ {
+		index := py - boundingBox.Min.Y
+		iy := float64(py - boundingBox.Min.Y)
+
+		x0 := float64(minX[index] - boundingBox.Min.X)
+
+		waX0Y := wa0 + x0*wadx + iy*wady
+		wbX0Y := wb0 + x0*wbdx + iy*wbdy
+		wcX0Y := wc0 + x0*wcdx + iy*wcdy
+
+		// Triangle #1 calculations
+		t1p1XwaXnY := float64(srcTriangle1.P1.X) * waX0Y
+		t1p1YwaXnY := float64(srcTriangle1.P1.Y) * waX0Y
+
+		t1p2XwbXnY := float64(srcTriangle1.P2.X) * wbX0Y
+		t1p2YwbXnY := float64(srcTriangle1.P2.Y) * wbX0Y
+
+		t1p3XwcXnY := float64(srcTriangle1.P3.X) * wcX0Y
+		t1p3YwcXnY := float64(srcTriangle1.P3.Y) * wcX0Y
+
+		t1xWeight := t1p1XwaXnY + t1p2XwbXnY + t1p3XwcXnY
+		t1yWeight := t1p1YwaXnY + t1p2YwbXnY + t1p3YwcXnY
+
+		// Triangle #2 calculations
+		t2p1XwaXnY := float64(srcTriangle2.P1.X) * waX0Y
+		t2p1YwaXnY := float64(srcTriangle2.P1.Y) * waX0Y
+
+		t2p2XwbXnY := float64(srcTriangle2.P2.X) * wbX0Y
+		t2p2YwbXnY := float64(srcTriangle2.P2.Y) * wbX0Y
+
+		t2p3XwcXnY := float64(srcTriangle2.P3.X) * wcX0Y
+		t2p3YwcXnY := float64(srcTriangle2.P3.Y) * wcX0Y
+
+		t2xWeight := t2p1XwaXnY + t2p2XwbXnY + t2p3XwcXnY
+		t2yWeight := t2p1YwaXnY + t2p2YwbXnY + t2p3YwcXnY
+
+		for px := minX[index]; px <= maxX[index]; px++ {
+			// Triangle #1 color
+			var t1c color.Color
+			if interpolation == InterpolationBiLinear {
+				t1c = bilinearInterpolation(srcImage1, t1xWeight, t1yWeight)
+			} else {
+				// interpolation == InterpolationNearestNeighbour {
+				srcX := int(t1xWeight + 0.5)
+				srcY := int(t1yWeight + 0.5)
+				t1c = srcImage1.At(srcX, srcY)
+			}
+
+			// Triangle #2 color
+			var t2c color.Color
+			if interpolation == InterpolationBiLinear {
+				t2c = bilinearInterpolation(srcImage2, t2xWeight, t2yWeight)
+			} else {
+				// interpolation == InterpolationNearestNeighbour {
+				srcX := int(t2xWeight + 0.5)
+				srcY := int(t2yWeight + 0.5)
+				t2c = srcImage2.At(srcX, srcY)
+			}
+
+			c := interpolateColor(t1c, t2c, progress)
+
+			dstImage.Set(px, py, c)
+
+			// Triangle #1 calculations
+			t1xWeight += t1xWeightDelta
+			t1yWeight += t1yWeightDelta
+
+			// Triangle #2 calculations
+			t2xWeight += t2xWeightDelta
+			t2yWeight += t2yWeightDelta
+		}
+	}
+}
+
+func interpolatePoint(p1, p2 *image.Point, progress float64) *image.Point {
+	return &image.Point{
+		X: int(float64(p1.X)*(1-progress) + float64(p2.X)*progress),
+		Y: int(float64(p1.Y)*(1-progress) + float64(p2.Y)*progress),
+	}
+}
+
+func interpolateColor(c1 color.Color, c2 color.Color, progress float64) color.Color {
+	nc1 := color.NRGBAModel.Convert(c1).(color.NRGBA)
+	nc2 := color.NRGBAModel.Convert(c2).(color.NRGBA)
+	return color.NRGBA{
+		R: toUint8(math.Round(float64(nc1.R)*(1-progress) + float64(nc2.R)*progress)),
+		G: toUint8(math.Round(float64(nc1.G)*(1-progress) + float64(nc2.G)*progress)),
+		B: toUint8(math.Round(float64(nc1.B)*(1-progress) + float64(nc2.B)*progress)),
+		A: toUint8(math.Round(float64(nc1.A)*(1-progress) + float64(nc2.A)*progress)),
+	}
+}
+
 func triangleMinMaxX(dstTriangle Triangle) (minX []int, maxX []int, boundingBox image.Rectangle) {
 	var l1 []image.Point
 	var l2 []image.Point
@@ -175,7 +304,7 @@ func preCalculatedBarycentricWeightDeltas(triangle Triangle) (wa0, wb0, wc0, wad
 
 	for py := boundingBox.Min.Y; py <= boundingBox.Min.Y+1; py++ {
 		for px := boundingBox.Min.X; px <= boundingBox.Min.X+1; px++ {
-			P := image.Point{X: px, Y: py}
+			P := &image.Point{X: px, Y: py}
 
 			// Calculate our edge functions
 			ABP := Triangle{P1: triangle.P1, P2: triangle.P2, P3: P}.doubleSignedArea()
