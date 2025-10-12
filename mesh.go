@@ -5,8 +5,6 @@ import (
 	"image/color"
 	"image/draw"
 	"math"
-
-	"github.com/chran554/go-bresenham"
 )
 
 // Mesh is a mesh of triangles that can be used to warp an image.
@@ -172,29 +170,8 @@ func (m *Mesh) PaintMesh(image draw.Image, lineColor *color.Color, pointColor *c
 		for xDivision := 0; xDivision < m.width; xDivision++ {
 			t1, t2 := m.SubdivisionTriangles(xDivision, yDivision)
 
-			paintTriangle(image, t1, lineColor, pointColor)
-			paintTriangle(image, t2, lineColor, pointColor)
+			t1.PaintTriangle(image, lineColor, pointColor)
+			t2.PaintTriangle(image, lineColor, pointColor)
 		}
 	}
-}
-
-func paintTriangle(image draw.Image, t Triangle, lineColor *color.Color, pointColor *color.Color) {
-	if lineColor != nil {
-		bresenham.Bresenham(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, func(x, y int) { image.Set(x, y, *lineColor) })
-		bresenham.Bresenham(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, func(x, y int) { image.Set(x, y, *lineColor) })
-		bresenham.Bresenham(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, func(x, y int) { image.Set(x, y, *lineColor) })
-	}
-
-	if pointColor != nil {
-		paintPoint(image, t.P1.X, t.P1.Y, pointColor)
-		paintPoint(image, t.P2.X, t.P2.Y, pointColor)
-		paintPoint(image, t.P3.X, t.P3.Y, pointColor)
-	}
-}
-
-func paintPoint(image draw.Image, x, y int, pointColor *color.Color) {
-	image.Set(x-1, y, *pointColor)
-	image.Set(x+1, y, *pointColor)
-	image.Set(x, y-1, *pointColor)
-	image.Set(x, y+1, *pointColor)
 }
