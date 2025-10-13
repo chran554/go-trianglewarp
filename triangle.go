@@ -43,10 +43,14 @@ func (t Triangle) boundingBox() image.Rectangle {
 }
 
 func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointColor *color.Color) {
+	putPixelFn := func(x, y int) {
+		image.Set(x, y, porterDuffOverComposition(image.At(x, y), lineColor))
+	}
+
 	if lineColor != nil {
-		bresenham.Bresenham(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, func(x, y int) { image.Set(x, y, *lineColor) })
-		bresenham.Bresenham(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, func(x, y int) { image.Set(x, y, *lineColor) })
-		bresenham.Bresenham(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, func(x, y int) { image.Set(x, y, *lineColor) })
+		bresenham.Bresenham(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, putPixelFn)
+		bresenham.Bresenham(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, putPixelFn)
+		bresenham.Bresenham(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, putPixelFn)
 	}
 
 	if pointColor != nil {
@@ -56,9 +60,31 @@ func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointC
 	}
 }
 
+// porterDuffOverComposition is the composed color as the resulting color when you paint with srcColor over dstColor using composition "over".
+func porterDuffOverComposition(dstColor color.Color, srcColor *color.Color) color.RGBA {
+	dr, dg, db, da := dstColor.RGBA()
+	sr, sg, sb, sa := (*srcColor).RGBA()
+
+	r := sr + ((0xffff-sa)*dr)/0xffff
+	g := sg + ((0xffff-sa)*dg)/0xffff
+	b := sb + ((0xffff-sa)*db)/0xffff
+	a := sa + ((0xffff-sa)*da)/0xffff
+
+	cr := uint8(r >> 8)
+	cg := uint8(g >> 8)
+	cb := uint8(b >> 8)
+	ca := uint8(a >> 8)
+	c := color.RGBA{R: cr, G: cg, B: cb, A: ca}
+	return c
+}
+
 func paintPoint(image draw.Image, x, y int, pointColor *color.Color) {
-	image.Set(x-1, y, *pointColor)
-	image.Set(x+1, y, *pointColor)
-	image.Set(x, y-1, *pointColor)
-	image.Set(x, y+1, *pointColor)
+	putPixelFn := func(x, y int) {
+		image.Set(x, y, porterDuffOverComposition(image.At(x, y), pointColor))
+	}
+
+	putPixelFn(x-1, y)
+	putPixelFn(x+1, y)
+	putPixelFn(x, y-1)
+	putPixelFn(x, y+1)
 }

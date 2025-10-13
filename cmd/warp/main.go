@@ -74,10 +74,12 @@ func warpMeshedImage2(srcImage draw.Image, srcImage2 draw.Image, showMesh bool) 
 	//warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
 	//warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, warp.InterpolationBiLinear)
 
+	c := color.Color(color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x33})
+
 	frameCount := 20
 	for i := 0; i <= frameCount; i++ {
 		progress := float64(i) / float64(frameCount)
-		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, nil)
+		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, &warp.Options{TrianglePointColor: &c, TriangleSideColor: &c})
 
 		//srcMesh.PaintMesh(srcImage, &lineColor, &pointColor)
 		//dstMesh.PaintMesh(dstImage, &lineColor, &pointColor)
