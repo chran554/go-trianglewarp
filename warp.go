@@ -12,13 +12,24 @@ import (
 type Interpolation int
 
 const (
-	InterpolationNearestNeighbour Interpolation = iota
-	InterpolationBiLinear
+	InterpolationBiLinear Interpolation = iota
+	InterpolationNearestNeighbour
+	InterpolationDefault = InterpolationBiLinear
 )
+
+type Options struct {
+	Interpolation      Interpolation
+	TriangleSideColor  *color.Color
+	TrianglePointColor *color.Color
+}
 
 // Warp warps a triangular excerpt from a source image onto a triangular area on a destination image.
 // The pixels written onto the destination area are interpolated using specified interpolation method.
-func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle, interpolation Interpolation) {
+func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle, options *Options) {
+	if options == nil {
+		options = &Options{}
+	}
+
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -75,14 +86,18 @@ func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTr
 		for px := minX[index]; px <= maxX[index]; px++ {
 			srcX := 0
 			srcY := 0
+
 			var c color.Color
-			if interpolation == InterpolationBiLinear {
-				c = bilinearInterpolation(srcImage, xWeight, yWeight)
-			} else {
+			switch options.Interpolation {
+			case InterpolationNearestNeighbour:
 				// interpolation == InterpolationNearestNeighbour {
 				srcX = int(xWeight + 0.5)
 				srcY = int(yWeight + 0.5)
 				c = srcImage.At(srcX, srcY)
+			case InterpolationBiLinear:
+				fallthrough
+			default:
+				c = bilinearInterpolation(srcImage, xWeight, yWeight)
 			}
 
 			dstImage.Set(px, py, c)
@@ -91,26 +106,32 @@ func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTr
 			yWeight += yWeightDelta
 		}
 	}
+
+	dstTriangle.PaintTriangle(dstImage, options.TriangleSideColor, options.TrianglePointColor)
 }
 
 // Morph interpolates a triangular area from a first image (srcImage1) to a triangular area on a second image (srcImage2).
 // The result is written to the dstImage image.
 // The image content of the triangular area is interpolated from srcImage1 to srcImage2 with the progress parameter [0.0, 1.0].
 // The triangular area, or rather the location of the three points of the triangle, are also interpolated from srcTriangle1 to srcTriangle3 with the progress parameter [0.0, 1.0]
-func Morph(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, progress float64, interpolation Interpolation) {
+func Morph(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, progress float64, options *Options) {
 	dstTriangle := Triangle{
 		P1: interpolatePoint(srcTriangle1.P1, srcTriangle2.P1, progress),
 		P2: interpolatePoint(srcTriangle1.P2, srcTriangle2.P2, progress),
 		P3: interpolatePoint(srcTriangle1.P3, srcTriangle2.P3, progress),
 	}
 
-	MorphWithFixedDestination(srcImage1, srcTriangle1, srcImage2, srcTriangle2, dstImage, dstTriangle, progress, interpolation)
+	MorphWithFixedDestination(srcImage1, srcTriangle1, srcImage2, srcTriangle2, dstImage, dstTriangle, progress, options)
 }
 
 // MorphWithFixedDestination interpolates a triangular area from a first image (srcImage1) to a triangular area on a second image (srcImage2).
 // The result is written to the dstTriangle on the dstImage image.
 // The image content of the triangular area is interpolated from srcImage1 to srcImage2 with the progress parameter [0.0, 1.0].
-func MorphWithFixedDestination(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, dstTriangle Triangle, progress float64, interpolation Interpolation) {
+func MorphWithFixedDestination(srcImage1 image.Image, srcTriangle1 Triangle, srcImage2 image.Image, srcTriangle2 Triangle, dstImage draw.Image, dstTriangle Triangle, progress float64, options *Options) {
+	if options == nil {
+		options = &Options{}
+	}
+
 	// Calculate the edge function for the whole triangle (ABC)
 	ABC := dstTriangle.doubleSignedArea()
 
@@ -195,24 +216,30 @@ func MorphWithFixedDestination(srcImage1 image.Image, srcTriangle1 Triangle, src
 		for px := minX[index]; px <= maxX[index]; px++ {
 			// Triangle #1 color
 			var t1c color.Color
-			if interpolation == InterpolationBiLinear {
-				t1c = bilinearInterpolation(srcImage1, t1xWeight, t1yWeight)
-			} else {
+			switch options.Interpolation {
+			case InterpolationNearestNeighbour:
 				// interpolation == InterpolationNearestNeighbour {
 				srcX := int(t1xWeight + 0.5)
 				srcY := int(t1yWeight + 0.5)
 				t1c = srcImage1.At(srcX, srcY)
+			case InterpolationBiLinear:
+				fallthrough
+			default:
+				t1c = bilinearInterpolation(srcImage1, t1xWeight, t1yWeight)
 			}
 
 			// Triangle #2 color
 			var t2c color.Color
-			if interpolation == InterpolationBiLinear {
-				t2c = bilinearInterpolation(srcImage2, t2xWeight, t2yWeight)
-			} else {
+			switch options.Interpolation {
+			case InterpolationNearestNeighbour:
 				// interpolation == InterpolationNearestNeighbour {
 				srcX := int(t2xWeight + 0.5)
 				srcY := int(t2yWeight + 0.5)
 				t2c = srcImage2.At(srcX, srcY)
+			case InterpolationBiLinear:
+				fallthrough
+			default:
+				t2c = bilinearInterpolation(srcImage2, t2xWeight, t2yWeight)
 			}
 
 			c := interpolateColor(t1c, t2c, progress)
@@ -228,6 +255,8 @@ func MorphWithFixedDestination(srcImage1 image.Image, srcTriangle1 Triangle, src
 			t2yWeight += t2yWeightDelta
 		}
 	}
+
+	dstTriangle.PaintTriangle(dstImage, options.TriangleSideColor, options.TrianglePointColor)
 }
 
 func interpolatePoint(p1, p2 *image.Point, progress float64) *image.Point {

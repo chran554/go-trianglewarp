@@ -76,7 +76,7 @@ func NewMesh(r image.Rectangle, xDivisions, yDivisions int) *Mesh {
 	return mesh
 }
 
-func WarpMesh(srcImage image.Image, srcMesh *Mesh, dstImage draw.Image, dstMesh *Mesh, interpolation Interpolation) {
+func WarpMesh(srcImage image.Image, srcMesh *Mesh, dstImage draw.Image, dstMesh *Mesh, options *Options) {
 	if srcMesh == nil || dstMesh == nil {
 		return
 	}
@@ -89,8 +89,8 @@ func WarpMesh(srcImage image.Image, srcMesh *Mesh, dstImage draw.Image, dstMesh 
 			st1, st2 := srcMesh.SubdivisionTriangles(x, y)
 			dt1, dt2 := dstMesh.SubdivisionTriangles(x, y)
 
-			Warp(srcImage, st1, dstImage, dt1, interpolation)
-			Warp(srcImage, st2, dstImage, dt2, interpolation)
+			Warp(srcImage, st1, dstImage, dt1, options)
+			Warp(srcImage, st2, dstImage, dt2, options)
 		}
 	}
 }

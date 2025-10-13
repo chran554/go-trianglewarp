@@ -77,7 +77,7 @@ func warpMeshedImage2(srcImage draw.Image, srcImage2 draw.Image, showMesh bool) 
 	frameCount := 20
 	for i := 0; i <= frameCount; i++ {
 		progress := float64(i) / float64(frameCount)
-		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, warp.InterpolationBiLinear)
+		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, nil)
 
 		//srcMesh.PaintMesh(srcImage, &lineColor, &pointColor)
 		//dstMesh.PaintMesh(dstImage, &lineColor, &pointColor)
@@ -86,14 +86,14 @@ func warpMeshedImage2(srcImage draw.Image, srcImage2 draw.Image, showMesh bool) 
 	}
 }
 
-func MorphImages(srcImage1 draw.Image, srcMesh1 *warp.Mesh, srcImage2 draw.Image, srcMesh2 *warp.Mesh, dstImage *image.RGBA, progress float64, interpolationMethod warp.Interpolation) {
+func MorphImages(srcImage1 draw.Image, srcMesh1 *warp.Mesh, srcImage2 draw.Image, srcMesh2 *warp.Mesh, dstImage *image.RGBA, progress float64, options *warp.Options) {
 	for x := 0; x < srcMesh2.XSubdivisionCount(); x++ {
 		for y := 0; y < srcMesh2.YSubdivisionCount(); y++ {
 			srcTriangle1_1, srcTriangle1_2 := srcMesh1.SubdivisionTriangles(x, y)
 			srcTriangle2_1, srcTriangle2_2 := srcMesh2.SubdivisionTriangles(x, y)
 
-			warp.Morph(srcImage1, srcTriangle1_1, srcImage2, srcTriangle2_1, dstImage, progress, interpolationMethod)
-			warp.Morph(srcImage1, srcTriangle1_2, srcImage2, srcTriangle2_2, dstImage, progress, interpolationMethod)
+			warp.Morph(srcImage1, srcTriangle1_1, srcImage2, srcTriangle2_1, dstImage, progress, options)
+			warp.Morph(srcImage1, srcTriangle1_2, srcImage2, srcTriangle2_2, dstImage, progress, options)
 		}
 	}
 }
@@ -146,8 +146,8 @@ func warpMeshedImage(srcImage image.Image, showMesh bool) {
 			dstTriangle1 := warp.Triangle{dp1, dp2, dp3}
 			dstTriangle2 := warp.Triangle{dp2, dp3, dp4}
 
-			warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
-			warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, warp.InterpolationBiLinear)
+			warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, nil)
+			warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, nil)
 
 			if showMesh {
 				drawTriangle(dstImage, dstTriangle1, color.NRGBA{128, 128, 128, 255})
@@ -175,8 +175,8 @@ func warpTriangle(srcImage image.Image) {
 	dstTriangle2 := warp.Triangle{&image.Point{X: 50, Y: 450}, &image.Point{X: 160, Y: 500}, &image.Point{X: 200, Y: 350}}
 
 	copyArea(srcImage, 0, 0, srcWidth-1, srcHeight-1, dstImage)
-	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, warp.InterpolationBiLinear)
-	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle2, warp.InterpolationBiLinear)
+	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, nil)
+	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle2, nil)
 	drawTriangle(dstImage, srcTriangle, color.White)
 	drawTriangle(dstImage, dstTriangle, color.White)
 	drawTriangle(dstImage, dstTriangle2, color.White)
