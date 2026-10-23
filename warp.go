@@ -24,7 +24,7 @@ type Options struct {
 }
 
 // Warp warps a triangular excerpt from a source image onto a triangular area on a destination image.
-// The pixels written onto the destination area are interpolated using specified interpolation method.
+// The pixels written onto the destination area are interpolated using specified options like the interpolation method.
 func Warp(srcImage image.Image, srcTriangle Triangle, dstImage draw.Image, dstTriangle Triangle, options *Options) {
 	if options == nil {
 		options = &Options{}

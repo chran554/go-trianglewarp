@@ -18,7 +18,8 @@ func (t Triangle) String() string {
 }
 
 // doubleSignedArea is the doubled (signed) area size for the triangle.
-// The sign of the area value tells if the points of the triangle are in given clockwise or counter-clockwise order.
+// The sign of the area value tells if the points of the triangle are given
+// in clockwise or counter-clockwise order.
 //
 // The value is the same as the determinant for the edge vectors u and v
 // where u=P2-P1 and v=P3-P1.
@@ -60,7 +61,7 @@ func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointC
 	}
 }
 
-// porterDuffOverComposition is the composed color as the resulting color when you paint with srcColor over dstColor using composition "over".
+// porterDuffOverComposition is the composed color when you paint with srcColor over dstColor using composition "over".
 func porterDuffOverComposition(dstColor color.Color, srcColor *color.Color) color.RGBA {
 	dr, dg, db, da := dstColor.RGBA()
 	sr, sg, sb, sa := (*srcColor).RGBA()
