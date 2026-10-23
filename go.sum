@@ -1,5 +1,5 @@
-github.com/chran554/go-bresenham v0.1.0 h1:aKF1Clm+DEn5PmYD1vhxXylxRlKeLL0THSSEMr5MXlY=
-github.com/chran554/go-bresenham v0.1.0/go.mod h1:Bq/DviTRl2hMOCRjWK5oYdo4krJ9ABwYwLDufYMIcyA=
+github.com/chran554/go-bresenham v0.1.1 h1:1G/3G9PQoRgijCL3r0IlFKJxUYD3hpzZ8xnJEEgDV+s=
+github.com/chran554/go-bresenham v0.1.1/go.mod h1:ykQHR3+stxId0OtcMUWZnq3QIc1O7HocCPZKRml3JAA=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
