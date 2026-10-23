@@ -12,9 +12,9 @@ import (
 type Interpolation int
 
 const (
-	InterpolationBiLinear Interpolation = iota
+	InterpolationBiLinear Interpolation = iota // Default interpolation value
 	InterpolationNearestNeighbour
-	InterpolationDefault = InterpolationBiLinear
+	InterpolationDefault = InterpolationBiLinear // Default interpolation value
 )
 
 type Options struct {

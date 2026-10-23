@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/chran554/go-bresenham"
 	warp "github.com/chran554/go-trianglewarp"
 
@@ -26,82 +24,10 @@ func main() {
 	imageFilename := os.Args[1]
 
 	srcImage, _ := loadImage(imageFilename)
-	srcImage2, _ := loadImage("images/src-image-2.png")
 
 	warpTriangle(srcImage)
 
-	// warpMeshedImage(srcImage, true)
-	warpMeshedImage2(srcImage, srcImage2, true)
-}
-
-func warpMeshedImage2(srcImage draw.Image, srcImage2 draw.Image, showMesh bool) {
-	//lineColor := color.Color(color.RGBA{R: 255, A: 64})
-	//pointColor := color.Color(color.White)
-
-	srcWidth := srcImage.Bounds().Dx()
-	srcHeight := srcImage.Bounds().Dy()
-
-	dstImage := image.NewRGBA(image.Rect(0, 0, srcWidth, srcHeight))
-
-	xDivisions := 12
-	yDivisions := 8
-
-	srcMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
-	dstMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
-
-	// Make destination mesh somewhat irregular/distorted
-	deviation := min(srcWidth/srcMesh.XSubdivisionCount(), srcHeight/srcMesh.YSubdivisionCount()) / 2
-	for x := 0; x < dstMesh.XSubdivisionCount(); x++ {
-		for y := 0; y < dstMesh.YSubdivisionCount(); y++ {
-			t1, t2 := dstMesh.SubdivisionTriangles(x, y)
-
-			t1.P1.X = rnd(t1.P1.X, deviation)
-			t1.P1.Y = rnd(t1.P1.Y, deviation)
-			t1.P2.X = rnd(t1.P2.X, deviation)
-			t1.P2.Y = rnd(t1.P2.Y, deviation)
-			t1.P3.X = rnd(t1.P3.X, deviation)
-			t1.P3.Y = rnd(t1.P3.Y, deviation)
-
-			t2.P1.X = rnd(t2.P1.X, deviation)
-			t2.P1.Y = rnd(t2.P1.Y, deviation)
-			t2.P2.X = rnd(t2.P2.X, deviation)
-			t2.P2.Y = rnd(t2.P2.Y, deviation)
-			t2.P3.X = rnd(t2.P3.X, deviation)
-			t2.P3.Y = rnd(t2.P3.Y, deviation)
-		}
-	}
-
-	//warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
-	//warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, warp.InterpolationBiLinear)
-
-	c := color.Color(color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x33})
-
-	frameCount := 20
-	for i := 0; i <= frameCount; i++ {
-		progress := float64(i) / float64(frameCount)
-		MorphImages(srcImage, srcMesh, srcImage2, dstMesh, dstImage, progress, &warp.Options{TrianglePointColor: &c, TriangleSideColor: &c})
-
-		//srcMesh.PaintMesh(srcImage, &lineColor, &pointColor)
-		//dstMesh.PaintMesh(dstImage, &lineColor, &pointColor)
-
-		_ = saveImage(dstImage, fmt.Sprintf("output/mesh-warp-dst-%03d.png", i))
-	}
-}
-
-func MorphImages(srcImage1 draw.Image, srcMesh1 *warp.Mesh, srcImage2 draw.Image, srcMesh2 *warp.Mesh, dstImage *image.RGBA, progress float64, options *warp.Options) {
-	for x := 0; x < srcMesh2.XSubdivisionCount(); x++ {
-		for y := 0; y < srcMesh2.YSubdivisionCount(); y++ {
-			srcTriangle1_1, srcTriangle1_2 := srcMesh1.SubdivisionTriangles(x, y)
-			srcTriangle2_1, srcTriangle2_2 := srcMesh2.SubdivisionTriangles(x, y)
-
-			warp.Morph(srcImage1, srcTriangle1_1, srcImage2, srcTriangle2_1, dstImage, progress, options)
-			warp.Morph(srcImage1, srcTriangle1_2, srcImage2, srcTriangle2_2, dstImage, progress, options)
-		}
-	}
-}
-
-func rnd(value, maxDeviation int) int {
-	return value + rand.N(maxDeviation/2) - (maxDeviation / 4)
+	warpMeshedImage(srcImage, true)
 }
 
 func warpMeshedImage(srcImage image.Image, showMesh bool) {
@@ -130,8 +56,8 @@ func warpMeshedImage(srcImage image.Image, showMesh bool) {
 	}
 
 	// Warp the source image to the destination by using the predefined mesh points
-	for x := 0; x < divisions; x++ {
-		for y := 0; y < divisions; y++ {
+	for x := range divisions {
+		for y := range divisions {
 			sp1 := meshPoints[y*divisionsPlus+x]
 			sp2 := meshPoints[y*divisionsPlus+x+1]
 			sp3 := meshPoints[(y+1)*divisionsPlus+x]
@@ -142,18 +68,18 @@ func warpMeshedImage(srcImage image.Image, showMesh bool) {
 			dp3 := warpPoints[(y+1)*divisionsPlus+x]
 			dp4 := warpPoints[(y+1)*divisionsPlus+x+1]
 
-			srcTriangle1 := warp.Triangle{sp1, sp2, sp3}
-			srcTriangle2 := warp.Triangle{sp2, sp3, sp4}
+			srcTriangle1 := warp.Triangle{P1: sp1, P2: sp2, P3: sp3}
+			srcTriangle2 := warp.Triangle{P1: sp2, P2: sp3, P3: sp4}
 
-			dstTriangle1 := warp.Triangle{dp1, dp2, dp3}
-			dstTriangle2 := warp.Triangle{dp2, dp3, dp4}
+			dstTriangle1 := warp.Triangle{P1: dp1, P2: dp2, P3: dp3}
+			dstTriangle2 := warp.Triangle{P1: dp2, P2: dp3, P3: dp4}
 
 			warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, nil)
 			warp.Warp(srcImage, srcTriangle2, dstImage, dstTriangle2, nil)
 
 			if showMesh {
-				drawTriangle(dstImage, dstTriangle1, color.NRGBA{128, 128, 128, 255})
-				drawTriangle(dstImage, dstTriangle2, color.NRGBA{128, 128, 128, 255})
+				drawTriangle(dstImage, dstTriangle1, color.NRGBA{R: 128, G: 128, B: 128, A: 255})
+				drawTriangle(dstImage, dstTriangle2, color.NRGBA{R: 128, G: 128, B: 128, A: 255})
 
 				drawDot(dstImage, dp1, color.White)
 				drawDot(dstImage, dp2, color.White)

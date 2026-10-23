@@ -84,7 +84,7 @@ func BenchmarkWarp7(b *testing.B) {
 	for _, testScenario := range testScenarios {
 		b.Run(fmt.Sprintf("scenario %s", testScenario.name), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				Warp(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle, InterpolationNearestNeighbour)
+				Warp(srcImage, testScenario.srcTriangle, dstImage, testScenario.dstTriangle, &Options{Interpolation: InterpolationNearestNeighbour})
 			}
 		})
 	}

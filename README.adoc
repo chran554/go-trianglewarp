@@ -1,8 +1,14 @@
 = Triangle Warp
 
-This is an optimized rasterization of a triangle using cpu (no gpu).
+Triangle Warp is a CPU-based rasterizer for mapping the pixels in a source triangle onto a triangular area in a destination image.
 
-The image color/pixel content of the source triangle is rasterized/drawn in a destination image.
+The main *functionality is warp* of a triangle.
+Warping a triangle-shaped excerpt of a source image on to a different-shaped triangle on a destination image.
+
+The *secondary functionality is morph* of a triangle.
+Morphing a first triangle-shaped excerpt of a first source image into a secondary different-triangle-shaped excerpt of a secondary source image on to a different-shaped triangle on a destination image.
+
+This library also supports warping or morphing an image through a *mesh* of triangles.
 
 == Install
 
@@ -11,22 +17,137 @@ The image color/pixel content of the source triangle is rasterized/drawn in a de
 go get github.com/chran554/go-trianglewarp@latest
 ----
 
+Import the package as `warp`:
+
 [source, go]
 ----
-import "github.com/chran554/go-trianglewarp"
+import warp "github.com/chran554/go-trianglewarp"
 ----
 
-== Usage
+== Warp a triangle
 
-To warp a triangular piece of an image to another image simply call `warp.Warp` function.
+`warp.Warp` maps the pixels inside `srcTriangle` from `srcImage` onto `dstTriangle` in `dstImage`. A `Triangle` contains pointers to its three `image.Point` values.
 
-.Usage of `warp.Warp` function.
+The destination image must implement `draw.Image`.
+
 [source, go]
 ----
-warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, warp.InterpolationBiLinear)
+import (
+	"image"
+
+	warp "github.com/chran554/go-trianglewarp"
+)
+
+func warpTriangle() {
+	srcImage := image.NewRGBA(image.Rect(0, 0, 512, 512))
+	dstImage := image.NewRGBA(srcImage.Bounds())
+
+	srcTriangle := warp.Triangle{
+		P1: &image.Point{X: 200, Y: 250},
+		P2: &image.Point{X: 400, Y: 250},
+		P3: &image.Point{X: 300, Y: 400},
+	}
+	dstTriangle := warp.Triangle{
+		P1: &image.Point{X: 350, Y: 450},
+		P2: &image.Point{X: 500, Y: 350},
+		P3: &image.Point{X: 460, Y: 500},
+	}
+
+	warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, nil)
+}
 ----
 
-See also examples below.
+== Warp Options
+
+Options can be sent to the `Warp` function.
+
+The main option is the interpolation option.
+`warp.InterpolationDefault` is the default and it is an alias for `warp.InterpolationBiLinear`.
+
+`Options` also accepts optional `TriangleSideColor` and `TrianglePointColor` values for drawing the destination triangle’s sides and points after the warp. This is mainly used for debugging.
+
+== Example
+
+The example images below show the source image and the result of rendering warped triangles onto it.
+
+.Source image of Lena
+image::images/src-image-1.png[width=50%]
+
+.Lena with warped triangles
+image::documentation/triangle-warp.png[width=50%]
+
+== Warp a mesh
+
+`warp.NewMesh` creates a rectangular grid of triangles with the requested number of subdivisions. `warp.WarpMesh` maps corresponding subdivision triangles from a source mesh to a destination mesh. The destination mesh can be distorted by changing the points returned by `Mesh.Point`; mesh points are shared by adjacent triangles.
+
+[source, go]
+----
+import (
+	"image"
+
+	warp "github.com/chran554/go-trianglewarp"
+)
+
+func warpMesh(srcImage image.Image) *image.RGBA {
+	srcBounds := srcImage.Bounds()
+	dstImage := image.NewRGBA(srcBounds)
+
+	xDivisions := 12
+	yDivisions := 8
+	srcMesh := warp.NewMesh(srcBounds, xDivisions, yDivisions)
+	dstMesh := warp.NewMesh(srcBounds, xDivisions, yDivisions)
+
+	// Move one shared destination point to distort the grid.
+	if p := dstMesh.Point(6, 4); p != nil {
+		p.X += 20
+		p.Y += 20
+	}
+
+	warp.WarpMesh(srcImage, srcMesh, dstImage, dstMesh, nil)
+	return dstImage
+}
+----
+
+.Warped image using a distorted mesh
+image::documentation/mesh-warp.png[width=50%]
+
+.Warped image with the destination mesh overlaid
+image::documentation/mesh-warp2.png[width=50%]
+
+== Morph between triangles
+
+`warp.Morph` interpolates both the image content and the triangle position between two source images.
+
+The destination triangle shape, location and pixel color content are computed by interpolating by the corresponding source and destination points.
+
+The interpolation `progress` is normally in the range `0.0` to `1.0`; `0.0` selects the first image and triangle, while `1.0` selects the second triangle.
+
+[source, go]
+----
+Morph(
+	srcImage1 image.Image, srcTriangle1 Triangle,
+	srcImage2 image.Image, srcTriangle2 Triangle,
+	dstImage draw.Image,
+	progress float64,
+	options *Options)
+----
+
+Use `warp.MorphWithFixedDestination` when the output must remain inside an explicit destination triangle:
+
+[source, go]
+----
+MorphWithFixedDestination(
+	srcImage1 image.Image, srcTriangle1 Triangle,
+	srcImage2 image.Image, srcTriangle2 Triangle,
+	dstImage draw.Image, dstTriangle Triangle,
+	progress float64,
+	options *Options)
+}
+----
+
+== Dependencies
+
+The package uses https://github.com/chran554/go-bresenham/[go-bresenham] for line rasterization. All other functionality uses the Go standard library.
 
 == License
 
@@ -35,65 +156,6 @@ https://creativecommons.org/publicdomain/zero/1.0/[CC0 - Creative Commons 0 (v1.
 image::http://mirrors.creativecommons.org/presskit/buttons/80x15/png/cc-zero.png[CC0]
 
 It is not a requirement by the license, but if you do improve the code then any feedback or pull request is very appreciated. Sharing is caring.
-
-== Dependencies
-
-Nope. No exotic dependencies to mention.
-
-== Example
-
-Triangles of image data can be read from a source image and written (distorted) to a destination image.
-
-.Source example for rendering a warped triangle on a destination image.
-[source, go]
-----
-sp1 := image.Point{X: 200, Y: 250}
-sp2 := image.Point{X: 400, Y: 250}
-sp3 := image.Point{X: 300, Y: 400}
-
-dp1 := image.Point{X: 350, Y: 450}
-dp2 := image.Point{X: 500, Y: 350}
-dp3 := image.Point{X: 460, Y: 500}
-
-srcTriangle := warp.Triangle{sp1, sp2, sp3}
-dstTriangle := warp.Triangle{dp1, dp2, dp3}
-
-warp.Warp(srcImage, srcTriangle, dstImage, dstTriangle, warp.InterpolationBiLinear)
-----
-
-.Source image of Lena
-image::images/src-image-1.png[width=50%]
-
-.Lena with warped triangles
-image::documentation/triangle-warp.png[width=50%]
-
-== Warp mesh
-
-A convenience method to set up a rectangular mesh of triangles for a rectangle using width and height and number of divisions in width and height.
-
-This rasterization allows for a grid of triangles on the source image to be rendered to a destination image distortedly as the destination triangle grid can be distorted in respect to the source triangle grid.
-
-.Source example for setting up a triangle mesh for an image.
-[source, go]
-----
-	srcImage2, _ := loadImage("images/src-image-2.png")
-	dstImage := image.NewRGBA(image.Rect(0, 0, srcWidth, srcHeight))
-
-	xDivisions := 12
-	yDivisions := 8
-
-	srcMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
-	dstMesh := warp.NewMesh(image.Rect(0, 0, srcWidth, srcHeight), xDivisions, yDivisions)
-
-
-	warp.Warp(srcImage, srcTriangle1, dstImage, dstTriangle1, warp.InterpolationBiLinear)
-----
-
-.Warped image of Lena using a mesh of triangles
-image::documentation/mesh-warp.png[width=50%]
-
-.Warped image of Lena using a mesh of triangles
-image::documentation/mesh-warp2.png[width=50%]
 
 == Inspiration and primary recipes
 

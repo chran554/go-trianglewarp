@@ -10,3 +10,6 @@ build:
 benchmark:
 	go test -bench=. -count=1 -benchtime=5s -benchmem -run=^#
 
+.PHONY: test
+test:
+	go test ./...
