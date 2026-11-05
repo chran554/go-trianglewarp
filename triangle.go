@@ -35,23 +35,24 @@ func (t Triangle) orientationClockwise() int {
 
 func (t Triangle) boundingBox() image.Rectangle {
 	r := image.Rectangle{}
-	r.Min.X = min(min(t.P1.X, t.P2.X), t.P3.X)
-	r.Min.Y = min(min(t.P1.Y, t.P2.Y), t.P3.Y)
-	r.Max.X = max(max(t.P1.X, t.P2.X), t.P3.X)
-	r.Max.Y = max(max(t.P1.Y, t.P2.Y), t.P3.Y)
+	r.Min.X = min(t.P1.X, t.P2.X, t.P3.X)
+	r.Min.Y = min(t.P1.Y, t.P2.Y, t.P3.Y)
+	r.Max.X = max(t.P1.X, t.P2.X, t.P3.X)
+	r.Max.Y = max(t.P1.Y, t.P2.Y, t.P3.Y)
 
 	return r
 }
 
 func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointColor *color.Color) {
-	putPixelFn := func(x, y int) {
+	putPixelFn := func(x, y int) bool {
 		image.Set(x, y, porterDuffOverComposition(image.At(x, y), lineColor))
+		return true
 	}
 
 	if lineColor != nil {
-		bresenham.Bresenham(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, putPixelFn)
-		bresenham.Bresenham(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, putPixelFn)
-		bresenham.Bresenham(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, putPixelFn)
+		bresenham.Line(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, putPixelFn)
+		bresenham.Line(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, putPixelFn)
+		bresenham.Line(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, putPixelFn)
 	}
 
 	if pointColor != nil {

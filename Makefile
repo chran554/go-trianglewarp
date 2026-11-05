@@ -1,6 +1,6 @@
 
 .PHONY: all
-all: build
+all: build test
 
 .PHONY: build
 build:
