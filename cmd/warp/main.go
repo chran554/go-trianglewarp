@@ -121,9 +121,9 @@ func copyArea(src image.Image, sx0 int, sy0 int, sx1 int, sy1 int, dst draw.Imag
 }
 
 func drawTriangle(img *image.RGBA, t warp.Triangle, c color.Color) {
-	bresenham.Line(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, func(x, y int) bool { img.Set(x, y, c); return true })
-	bresenham.Line(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, func(x, y int) bool { img.Set(x, y, c); return true })
-	bresenham.Line(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, func(x, y int) bool { img.Set(x, y, c); return true })
+	bresenham.Line(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, func(x, y int) { img.Set(x, y, c) })
+	bresenham.Line(t.P2.X, t.P2.Y, t.P3.X, t.P3.Y, func(x, y int) { img.Set(x, y, c) })
+	bresenham.Line(t.P3.X, t.P3.Y, t.P1.X, t.P1.Y, func(x, y int) { img.Set(x, y, c) })
 }
 
 func drawDot(img *image.RGBA, p *image.Point, c color.Color) {

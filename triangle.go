@@ -44,10 +44,7 @@ func (t Triangle) boundingBox() image.Rectangle {
 }
 
 func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointColor *color.Color) {
-	putPixelFn := func(x, y int) bool {
-		image.Set(x, y, porterDuffOverComposition(image.At(x, y), lineColor))
-		return true
-	}
+	putPixelFn := func(x, y int) { image.Set(x, y, porterDuffOverComposition(image.At(x, y), lineColor)) }
 
 	if lineColor != nil {
 		bresenham.Line(t.P1.X, t.P1.Y, t.P2.X, t.P2.Y, putPixelFn)
@@ -62,7 +59,12 @@ func (t Triangle) PaintTriangle(image draw.Image, lineColor *color.Color, pointC
 	}
 }
 
-// porterDuffOverComposition is the composed color when you paint with srcColor over dstColor using composition "over".
+// porterDuffOverComposition composites srcColor over dstColor using the Porter-Duff
+// "over" operation. RGB channels are interpreted as alpha-premultiplied values,
+// as returned by color.Color.RGBA().
+//
+// For physically correct compositing, RGB values must be in linear-light space (not gamma space).
+// Convert colors before to linear light space before calling this function.
 func porterDuffOverComposition(dstColor color.Color, srcColor *color.Color) color.RGBA {
 	dr, dg, db, da := dstColor.RGBA()
 	sr, sg, sb, sa := (*srcColor).RGBA()

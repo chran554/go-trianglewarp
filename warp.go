@@ -281,9 +281,9 @@ func triangleMinMaxX(dstTriangle Triangle) (minX []int, maxX []int, boundingBox 
 	var l1 []image.Point
 	var l2 []image.Point
 	var l3 []image.Point
-	bresenham.Line(dstTriangle.P1.X, dstTriangle.P1.Y, dstTriangle.P2.X, dstTriangle.P2.Y, func(x, y int) bool { l1 = append(l1, image.Pt(x, y)); return true })
-	bresenham.Line(dstTriangle.P2.X, dstTriangle.P2.Y, dstTriangle.P3.X, dstTriangle.P3.Y, func(x, y int) bool { l2 = append(l2, image.Pt(x, y)); return true })
-	bresenham.Line(dstTriangle.P3.X, dstTriangle.P3.Y, dstTriangle.P1.X, dstTriangle.P1.Y, func(x, y int) bool { l3 = append(l3, image.Pt(x, y)); return true })
+	bresenham.Line(dstTriangle.P1.X, dstTriangle.P1.Y, dstTriangle.P2.X, dstTriangle.P2.Y, func(x, y int) { l1 = append(l1, image.Pt(x, y)) })
+	bresenham.Line(dstTriangle.P2.X, dstTriangle.P2.Y, dstTriangle.P3.X, dstTriangle.P3.Y, func(x, y int) { l2 = append(l2, image.Pt(x, y)) })
+	bresenham.Line(dstTriangle.P3.X, dstTriangle.P3.Y, dstTriangle.P1.X, dstTriangle.P1.Y, func(x, y int) { l3 = append(l3, image.Pt(x, y)) })
 
 	boundingBox = dstTriangle.boundingBox()
 
